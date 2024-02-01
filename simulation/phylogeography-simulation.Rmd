@@ -1,0 +1,101 @@
+---
+title: "Phylogeography Simulation"
+author: "Guppy Stott"
+date: "2024-01-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Phylogeography Simulation
+
+To investigate the effects of subsampling strategy on our phylogenetic analyses, we will simulate a phylogenetic tree with 5 discrete states, each representing a continent. This is done via diversitree. After simulating a "true tree", we will infer sequences for each of the tips on the tree. We then subset this file into a "sequenced" file, incorporating biased sequencing by deme. Thus at the end of this script we have three files, `sequenced_simulant.nex`, `true_simulant.nex`, and `true_simulant.nwk`.
+
+-   `true_simulant.nwk`: a tree file depicting the true evolutionary history of the sequences.
+-   `true_simulant.nex`: a nexus file with sequences simulating the evolution of a random string based on an HKY model of evolution on the true tree.
+-   `sequenced_simulant.nex`: a nexus file which is a simulated subset of this true set of sequences, meant to act like a simulation of sequencing efforts being lopsided. ***(WIP)***
+
+## Exploring Diversitree for Simulation of Discrete Phylogeography
+
+```{r libraries}
+library(ape)
+library(diversitree)
+library(phangorn)
+library(phyloTop)
+library(ggplot2)
+library(phyclust)
+library(treeio)
+# library(reshape2)
+# library(scales)
+# library(egg)
+# library(gridBase)
+# library(grid)
+```
+
+## Run Simulation
+
+MuSSE is a generalization of the BiSSE model to allow characters for more than two states by recoding them. Let lineages in state $i$ speciate at rate $\lambda_i$ go extinct at rate $\mu_i$. The transition between states $i$ and $j$ is given by $q_{ij}$. This means that for $k$ states, there is a total of $k^2+2k$ distinct parameters. To simplify things, we will use a constant rate of birth and extinction across all states.
+
+We will make use of the World Poultry Map from Rabobank to get a rough estimate of the trade flow networks involved in poultry and get rough numbers for the transition rates. Just eyeballed though with this flyway map: <https://doi.org/0384> and this live trade flow map: <https://research.rabobank.com/far/en/documents/149672_1670842_rabobank_world-poultry-map-2018_web.pdf>. Our lambda and mu parameters are chosen arbitrarily, but in the future it may make sense to use biologically relevant parameters.
+
+```{r simulation}
+lambda            = 9
+baseTransFreq     = 0.5
+mu                = 3
+sampleProportions = c(0.1,0.01,0.1,0.05,0.01)
+set.seed(12)
+
+# a few generating functions to make our parameter list more human-readable, 
+#   using rule of thumb from Liu et al.: low-0.1,0.3, high-0.7,0.9
+low    <- function(){runif(1,0.1,0.3)}
+med    <- function(){runif(1,0.3,0.6)}
+high   <- function(){runif(1,0.6,0.9)}
+
+# continents: NA-1,SA-2, E-3, AS-4,AF-5
+p   <- c(
+  lambda, lambda, lambda, lambda, lambda,
+  mu, mu, mu, mu, mu,
+  # 12 13 14 15
+  baseTransFreq*high(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*low(),
+  # 21 23 24 25
+  baseTransFreq*low(), baseTransFreq*high(), baseTransFreq*high(), baseTransFreq*med(),
+  # 31 32 34 35
+  baseTransFreq*low(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*high(),
+  # 41 42 43 45
+  baseTransFreq*low(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*high(),
+  # 51 52 53 54
+  baseTransFreq*low(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*med()
+)
+
+# generate tree and estimate discrete history
+phy <- tree.musse(p, max.taxa = 1000,x0=1,max.t=Inf, include.extinct=TRUE) 
+h <- history.from.sim.discrete(phy, 1:5)
+
+# plot tree
+plot(h, phy,show.node.label = F,show.tip.label = F, show.tip.state = F, show.node.state = F, cex=1 ,cols = c('#0072BD', '#EDB120','magenta', 'red', 'cyan'))
+# phy_try <- ace(phy$tip.label, phy, type="d")
+write.tree(phy, "../data/true_simulant.nwk")
+# look at this doohicky for the fun things https://rdrr.io/cran/diversitree/man/trait.plot.html
+# trait.plot(phy, phy$tip.state, cols = c('#0072BD', '#EDB120','magenta', 'red', 'cyan'))
+```
+
+From here, we can generate simulated sequences using a couple of extra steps. One, we create a Newick file with no node labels/states, and then, we run Seq-Gen to build sequences.
+
+```{r}
+library(phyclust)
+phy2 <- phy
+# Include dates as part of tip names
+phy2$tip.label <- paste(phy$tip.label, phy$tip.state, zapsmall(node.depth.edgelength(phy)[phy$orig$idx2[ match(phy$tip.label, phy$orig$name2)]], digits=4), sep="_")
+
+# Incorporate the the state labels as part of the tip name.
+
+# first, remove data which is irrelevant to Seq Gen
+phy2$node.label<- NULL
+phy2$node.state<- NULL
+
+set.seed(1234)
+HKY.1 <- seqgen(opts="-mHKY -l1740 -on", rooted.tree = phy2)
+cat(HKY.1, file="../data/true_simulant.nex")
+```

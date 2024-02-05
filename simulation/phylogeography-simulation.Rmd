@@ -27,11 +27,6 @@ library(phyloTop)
 library(ggplot2)
 library(phyclust)
 library(treeio)
-# library(reshape2)
-# library(scales)
-# library(egg)
-# library(gridBase)
-# library(grid)
 ```
 
 ## Run Simulation
@@ -54,6 +49,20 @@ med    <- function(){runif(1,0.3,0.6)}
 high   <- function(){runif(1,0.6,0.9)}
 
 # continents: NA-1,SA-2, E-3, AS-4,AF-5
+#   12 13 14 15
+rateNA_SA <- baseTransFreq*high()
+rateNA_EU <- baseTransFreq*low()
+rateNA_AS <- baseTransFreq*med()
+rateNA_AF <- baseTransFreq*low()
+#   23 24 25
+rateSA_EU <- baseTransFreq*high()
+rateSA_AS <- 
+rateSA_AF
+#   34 35
+rateEU_AS
+rateEU_AF
+#   45
+rateAS_AF
 p   <- c(
   lambda, lambda, lambda, lambda, lambda,
   mu, mu, mu, mu, mu,

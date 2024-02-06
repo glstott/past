@@ -1,0 +1,13 @@
+# Provide a conda file which includes R packages ape, diversitree, phangorn, and treeio.
+name: simulation
+channels:
+  - defaults
+  - bioconda
+  - r
+  - conda-forge
+dependencies:
+  - r-base
+  - r-ape=5.7
+  - r-diversitree
+  - r-phangorn=2.11
+  - bioconductor-treeio=1.26.0

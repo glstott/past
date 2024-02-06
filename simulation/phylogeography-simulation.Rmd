@@ -37,7 +37,7 @@ We will make use of the World Poultry Map from Rabobank to get a rough estimate 
 
 ```{r simulation}
 lambda            = 9
-baseTransFreq     = 0.5
+baseTransFreq     = 0.8
 mu                = 3
 sampleProportions = c(0.1,0.01,0.1,0.05,0.01)
 set.seed(12)
@@ -48,7 +48,7 @@ low    <- function(){runif(1,0.1,0.3)}
 med    <- function(){runif(1,0.3,0.6)}
 high   <- function(){runif(1,0.6,0.9)}
 
-# continents: NA-1,SA-2, E-3, AS-4,AF-5
+# Generate rates for pairwise combos of continents: NA-1,SA-2, E-3, AS-4,AF-5
 #   12 13 14 15
 rateNA_SA <- baseTransFreq*high()
 rateNA_EU <- baseTransFreq*low()
@@ -56,27 +56,31 @@ rateNA_AS <- baseTransFreq*med()
 rateNA_AF <- baseTransFreq*low()
 #   23 24 25
 rateSA_EU <- baseTransFreq*high()
-rateSA_AS <- 
-rateSA_AF
+rateSA_AS <- baseTransFreq*high()
+rateSA_AF <- baseTransFreq*med()
 #   34 35
-rateEU_AS
-rateEU_AF
+rateEU_AS <- baseTransFreq*med()
+rateEU_AF <- baseTransFreq*high()
 #   45
-rateAS_AF
+rateAS_AF <- baseTransFreq*high()
+
+# Place rates along with other necessary variables into rate matrix
 p   <- c(
   lambda, lambda, lambda, lambda, lambda,
   mu, mu, mu, mu, mu,
   # 12 13 14 15
-  baseTransFreq*high(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*low(),
+  rateNA_SA, rateNA_EU, rateNA_AS, rateNA_AF,
   # 21 23 24 25
-  baseTransFreq*low(), baseTransFreq*high(), baseTransFreq*high(), baseTransFreq*med(),
+  rateNA_SA, rateSA_EU, rateSA_AS, rateSA_AF,
   # 31 32 34 35
-  baseTransFreq*low(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*high(),
+  rateNA_EU, rateSA_EU, rateEU_AS, rateEU_AF,
   # 41 42 43 45
-  baseTransFreq*low(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*high(),
+  rateNA_AS, rateSA_AS, rateEU_AS, rateAS_AF,
   # 51 52 53 54
-  baseTransFreq*low(), baseTransFreq*low(), baseTransFreq*med(), baseTransFreq*med()
+  rateNA_AF, rateSA_AF, rateEU_AF, rateAS_AF
 )
+
+print(p)
 
 # generate tree and estimate discrete history
 phy <- tree.musse(p, max.taxa = 1000,x0=1,max.t=Inf, include.extinct=TRUE) 
@@ -93,18 +97,21 @@ write.tree(phy, "../data/true_simulant.nwk")
 From here, we can generate simulated sequences using a couple of extra steps. One, we create a Newick file with no node labels/states, and then, we run Seq-Gen to build sequences.
 
 ```{r}
-library(phyclust)
+# library(phyclust)
 phy2 <- phy
 # Include dates as part of tip names
 phy2$tip.label <- paste(phy$tip.label, phy$tip.state, zapsmall(node.depth.edgelength(phy)[phy$orig$idx2[ match(phy$tip.label, phy$orig$name2)]], digits=4), sep="_")
 
-# Incorporate the the state labels as part of the tip name.
+write.tree(phy2, "../data/true_simulant1.nwk")
 
-# first, remove data which is irrelevant to Seq Gen
-phy2$node.label<- NULL
-phy2$node.state<- NULL
-
-set.seed(1234)
-HKY.1 <- seqgen(opts="-mHKY -l1740 -on", rooted.tree = phy2)
-cat(HKY.1, file="../data/true_simulant.nex")
+# # Incorporate the the state labels as part of the tip name.
+# 
+# # first, remove data which is irrelevant to Seq Gen
+# phy2$node.label<- NULL
+# phy2$node.state<- NULL
+# 
+# set.seed(1234)
+# HKY.1 <- seqgen(opts="-mHKY -l1740 -of", rooted.tree = phy2)
+# print(HKY.1)
+# cat(HKY.1, file="../data/true_simulant.nex")
 ```

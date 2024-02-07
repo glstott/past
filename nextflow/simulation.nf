@@ -15,5 +15,9 @@ Cmd line: $workflow.commandLine
 """
 
 process trueTree{
-    conda 
+    conda 'envs/simulation.yml'
+
+    '''
+    
+    '''
 }

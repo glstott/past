@@ -58,7 +58,7 @@ workflow{
 
     // Define the parameters for the simulation.
     taxa = 1000
-    seed = 0
+    seed = 12
     out_tree = "true_tree.tre"
     out_hist = "true_hist.txt"
     //out_meta = "sim_meta.csv"

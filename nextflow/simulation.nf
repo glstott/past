@@ -15,24 +15,24 @@ Cmd line: $workflow.commandLine
 """
 
 process trueTree{
-    conda 'envs/simulation.yml'
+    //conda "-c bioconda -c conda-forge r-base r-ape=5.7 r-diversitree r-phangorn=2.11 bioconductor-treeio=1.26.0"
+    conda "$workflow.projectDir/envs/simulation.yml"
     // Process for generating true trees given a number of taxa.
 
     input:
     val taxa
     val seed
-    val out_tree
-    val out_hist
+    val prefix
 
     output:
-    file "${out_tree}" into true_tree
-    file "${out_hist}" into true_hist
+    path "${prefix}-${seed}-${taxa}.nwk", emit: ttree
 
 
     script:
-    '''
-    Rscript script.R -vanilla ${out_tree} ${out_hist} ${taxa} ${seed > 0 ? "${seed}" : ""}
-    '''
+    """
+    pwd
+    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed}-${taxa}.nwk ${taxa} ${seed}
+    """
 }
 
 process simulateSequences{
@@ -40,31 +40,29 @@ process simulateSequences{
     // Process for simulating sequences given a true tree.
 
     input:
-    file true_tree from true_tree
+    path true_tree
     val seed
 
     output:
-    file "${true_tree.simpleName}.fasta" into sim_seqs
+    path "${true_tree.simpleName}.fa"
     //file "${out_meta}" into sim_meta
 
     script:
-    '''
-    iqtree2 --alisim ${true_tree.simpleName}.fasta -m JC --length 1500 -t ${true_tree} --out-format fasta  ${seed > 0 ? "-seed ${seed}" : ""}
-    '''
+    """
+    iqtree2 --alisim ${true_tree.simpleName} -m JC --length 1500 -t ${true_tree} --out-format fasta  ${seed}
+    """
 }
 
 workflow{
     // Define the workflow for the simulation.
 
     // Define the parameters for the simulation.
-    taxa = 1000
+    taxa = 100
     seed = 12
-    out_tree = "true_tree.tre"
-    out_hist = "true_hist.txt"
+    prefix = "test0208"
     //out_meta = "sim_meta.csv"
 
     // Run the processes for the simulation.
-    trueTree(taxa, seed, out_tree, out_hist)
-    simulateSequences(true_tree, out_meta)
+    trueTree(taxa, seed, prefix)
+    simulateSequences(trueTree.out.ttree, seed)
 }
-```

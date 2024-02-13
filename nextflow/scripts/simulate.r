@@ -6,16 +6,15 @@ library(treeio)
 # load command line arguments into variables outtree, 
 #      outhist, taxa number, and seed
 args <- commandArgs(trailingOnly = TRUE)
-outtree <- args[1]
-outhist <- args[2]
+outtree <- args[2]
 n <- args[3]
-if (length(args) == 4) {
+if (length(args) > 3) {
   seed <- as.integer(args[4])
 }
 
 #instantiate variables
 lambda             <- 9
-base_trans_freq    <- 0.8
+base_trans_freq    <- 0.5
 mu                 <- 3
 sample_proportions <- c(0.1, 0.01, 0.1, 0.05, 0.01)
 set.seed(seed)
@@ -66,9 +65,14 @@ p   <- c(
   rateNA_AF, rateSA_AF, rateEU_AF, rateAS_AF
 )
 
+print("Rate has been matrixed...")
+print(n)
+print(p)
 # generate tree and estimate discrete history
 phy <- tree.musse(p, max.taxa = n, x0=1, max.t=Inf, include.extinct=TRUE)
-h <- history.from.sim.discrete(phy, 1:5)
+print("The MUSSE has run.")
+# h <- history.from.sim.discrete(phy, 1:5)
+# print("History simulated...")
 
 # plot tree
 phy2 <- phy
@@ -82,5 +86,5 @@ phy2$tip.label <- paste(phy$tip.label, phy$tip.state,
 # write tree to file
 write.tree(phy2, outtree)
 
-# write history to file
-write.table(h$history, outhist, sep="\t", quote=FALSE, row.names=FALSE, col.names=FALSE)
+# # write history to file
+# write.table(h$history, outhist, sep="\t", quote=FALSE, row.names=FALSE, col.names=FALSE)

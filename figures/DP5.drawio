@@ -1,0 +1,46 @@
+<mxfile host="Electron" modified="2024-02-21T14:19:50.564Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.7.5 Chrome/114.0.5735.289 Electron/25.8.1 Safari/537.36" etag="UOZX-njih4DxVsz1axKR" version="21.7.5" type="device">
+  <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
+    <mxGraphModel dx="1036" dy="606" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
+        <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-6" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;Host Genetic Distance&lt;/span&gt;&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=60;exitPerimeter=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="zj92keu02lLnfw3Dd3Hk-0" target="zj92keu02lLnfw3Dd3Hk-7" edge="1">
+          <mxGeometry x="-0.3714" relative="1" as="geometry">
+            <mxPoint x="260" y="200" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-15" value="&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;Live animal bilateral trade flow, &lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;wild bird migratory patterns&lt;br&gt;&lt;/font&gt;&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=30;exitPerimeter=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="zj92keu02lLnfw3Dd3Hk-0" target="zj92keu02lLnfw3Dd3Hk-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-0" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Graph Datastore&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="40" y="60" width="70" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="yu08YG_luDDuYqOoG8M8-0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="zj92keu02lLnfw3Dd3Hk-4" target="zj92keu02lLnfw3Dd3Hk-9" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-4" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;GISAID Database&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="40" y="185" width="70" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="yu08YG_luDDuYqOoG8M8-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="zj92keu02lLnfw3Dd3Hk-7" target="zj92keu02lLnfw3Dd3Hk-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-7" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Subsampler&lt;/font&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=default;fontColor=#ffffff;strokeColor=#005700;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="320" y="200" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="yu08YG_luDDuYqOoG8M8-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="zj92keu02lLnfw3Dd3Hk-9" target="zj92keu02lLnfw3Dd3Hk-7" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-9" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Multiple Sequence Alignment&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="150" y="200" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-14" value="&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;Phylogenetic relationships, &lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;outbreak characteristics&lt;br&gt;&lt;/font&gt;&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="zj92keu02lLnfw3Dd3Hk-10" target="zj92keu02lLnfw3Dd3Hk-0" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zj92keu02lLnfw3Dd3Hk-10" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Bayesian Phylodynamic Analysis&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="520" y="200" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

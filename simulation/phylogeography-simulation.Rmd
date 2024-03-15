@@ -23,9 +23,9 @@ To investigate the effects of subsampling strategy on our phylogenetic analyses,
 library(ape)
 library(diversitree)
 library(phangorn)
-library(phyloTop)
-library(ggplot2)
-library(phyclust)
+# library(phyloTop)
+# library(ggplot2)
+# library(phyclust)
 library(treeio)
 ```
 
@@ -37,7 +37,7 @@ We will make use of the World Poultry Map from Rabobank to get a rough estimate 
 
 ```{r simulation}
 lambda            = 9
-baseTransFreq     = 0.8
+baseTransFreq     = 0.5
 mu                = 3
 sampleProportions = c(0.1,0.01,0.1,0.05,0.01)
 set.seed(12)
@@ -88,7 +88,7 @@ h <- history.from.sim.discrete(phy, 1:5)
 
 # plot tree
 plot(h, phy,show.node.label = F,show.tip.label = F, show.tip.state = F, show.node.state = F, cex=1 ,cols = c('#0072BD', '#EDB120','magenta', 'red', 'cyan'))
-# phy_try <- ace(phy$tip.label, phy, type="d")
+phy_try <- ace(phy$tip.label, phy, type="d")
 write.tree(phy, "../data/true_simulant.nwk")
 # look at this doohicky for the fun things https://rdrr.io/cran/diversitree/man/trait.plot.html
 # trait.plot(phy, phy$tip.state, cols = c('#0072BD', '#EDB120','magenta', 'red', 'cyan'))
@@ -102,7 +102,7 @@ phy2 <- phy
 # Include dates as part of tip names
 phy2$tip.label <- paste(phy$tip.label, phy$tip.state, zapsmall(node.depth.edgelength(phy)[phy$orig$idx2[ match(phy$tip.label, phy$orig$name2)]], digits=4), sep="_")
 
-write.tree(phy2, "../data/true_simulant1.nwk")
+write.nexus(phy2, "../data/true_simulant1.nex")
 
 # # Incorporate the the state labels as part of the tip name.
 # 

@@ -53,7 +53,7 @@ process simulateSequences{
     """
 }
 
-process simulateConvenienceSampling {
+process simulateSimpleSampling {
     conda "-c bioconda seqkit"
     //simulate the acquisition of a convenience sample from the simulated sequences
     input:
@@ -63,7 +63,7 @@ process simulateConvenienceSampling {
     val p
 
     output:
-    path "${prefix}-${seed}-convenience.fa"
+    path "${prefix}-${seed}-convenience.fa", emit: simple
 
     script:
     """
@@ -81,13 +81,17 @@ process simulateBiasedSampling {
     val p
 
     output:
-    path "${prefix}-${seed}-biased.fa"
+    path "*part_.fa", emit: parts
+    path "${prefix}-${seed}-biased.fa", emit: biased
 
     script:
     """
     seqkit split ${seqs} -i --id-regexp "^[^_]*_([^_]*)_"
+    i=0
+
     for file in *part_.fa; do
-        seqkit sample -p ${p} -s ${seed} $file >> ${prefix}-${seed}-biased.fa
+        seqkit sample -p ${p[i]} -s ${seed} $file >> ${prefix}-${seed}-biased.fa
+        i=$((i+1))
     done
     """
 }
@@ -104,6 +108,9 @@ workflow{
     // Run the processes for the simulation.
     trueTree(taxa, seed, prefix)
     simulateSequences(trueTree.out.ttree, seed)
+
+    // Simulate sequencing event, biased and standard.
+    p=[0.8, 0.2, 0.8, 0.5, 0.1] // for now, using a hard-coded set of proportions. 
     simulateConvenienceSampling(simulateSequences.out, seed, prefix, 0.1)
-    simulateBiasedSampling(simulateSequences.out, seed, prefix, 0.1)
+    simulateBiasedSampling(simulateSequences.out, seed, prefix, p)
 }

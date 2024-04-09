@@ -91,7 +91,7 @@ process simulateBiasedSampling {
 
     for file in *part_.fa; do
         seqkit sample -p ${p[i]} -s ${seed} $file >> ${prefix}-${seed}-biased.fa
-        i=$((i+1))
+        i=\$((i+1))
     done
     """
 }

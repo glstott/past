@@ -14,7 +14,7 @@ Cmd line: $workflow.commandLine
 ==================================
 """
 
-process trueTree{
+process trueTree {
     //conda "-c bioconda -c conda-forge r-base r-ape=5.7 r-diversitree r-phangorn=2.11 bioconductor-treeio=1.26.0"
     conda "$workflow.projectDir/envs/simulation.yml"
     // Process for generating true trees given a number of taxa.
@@ -35,7 +35,7 @@ process trueTree{
     """
 }
 
-process simulateSequences{
+process simulateSequences {
     conda "-c bioconda iqtree"
     // Process for simulating sequences given a true tree.
 
@@ -113,4 +113,6 @@ workflow{
     p=[0.8, 0.2, 0.8, 0.5, 0.1] // for now, using a hard-coded set of proportions. 
     simulateConvenienceSampling(simulateSequences.out, seed, prefix, 0.1)
     simulateBiasedSampling(simulateSequences.out, seed, prefix, p)
+
+    // Subsequence dataset using SRS, stratified, and LCUBE
 }

@@ -91,7 +91,7 @@ process simulateBiasedSampling {
 
     for file in *part_.fa; do
         seqkit sample -p ${p[i]} -s ${seed} $file >> ${prefix}-${seed}-biased.fa
-        i=\$((i+1))
+        i += 1
     done
     """
 }
@@ -111,7 +111,7 @@ workflow{
 
     // Simulate sequencing event, biased and standard.
     p=[0.8, 0.2, 0.8, 0.5, 0.1] // for now, using a hard-coded set of proportions. 
-    simulateConvenienceSampling(simulateSequences.out, seed, prefix, 0.1)
+    simulateSimpleSampling(simulateSequences.out, seed, prefix, 0.1)
     simulateBiasedSampling(simulateSequences.out, seed, prefix, p)
 
     // Subsequence dataset using SRS, stratified, and LCUBE

@@ -53,6 +53,22 @@ process simulateSequences {
     """
 }
 
+process splitSamples {
+    conda "-c bioconda seqkit"
+    // Process for splitting a fasta file into multiple files.
+
+    input:
+    path seqs
+
+    output:
+    path "*part_.fa", emit: parts
+
+    script:
+    """
+    seqkit split ${seqs} -i --id-regexp "^[^_]*_([^_]*)_"
+    """
+}
+
 process simulateSimpleSampling {
     conda "-c bioconda seqkit"
     //simulate the acquisition of a convenience sample from the simulated sequences
@@ -93,6 +109,26 @@ process simulateBiasedSampling {
         seqkit sample -p ${p[i]} -s ${seed} $file >> ${prefix}-${seed}-biased.fa
         i += 1
     done
+    """
+}
+
+process runLCUBE {
+    // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
+    //        for now, set up your own R environment with the necessary packages.
+
+    input:
+    path seqs
+    val seed
+    val prefix
+    path metadata
+
+    output:
+    path "${prefix}-${seed}-lcube.fa", emit: lcube
+    path "${prefix}-${seed}-lcube.csv", emit: lcube_meta
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/lcube.r ${seqs} ${metadata} ${prefix}-${seed}-lcube.fa ${prefix}-${seed}-lcube.csv
     """
 }
 

@@ -16,8 +16,9 @@ id_col <- args[2]
 date_col <- args[3]
 in_fasta <- args[4]
 out_csv <- args[5]
-n <- as.integer(args[6])
-seed <- as.integer(args[7])
+out_fasta <- args[6]
+n <- as.integer(args[7])
+seed <- as.integer(args[8])
 
 # Adding some hard-coded testing comments because as an academic, I can get away with it
 # in_csv<-"../test_files/HA_NorthAmerica_202401-20240507.csv"
@@ -44,7 +45,7 @@ N <- length(fa)
 # get temporal distance matrix and collect lat long vals
 temporal<- c()
 for (i in 1:nrow(metadata)) {
-  temporal<- c(temporal, as.numeric(difftime(as.Date(metadata$Collection_Date[i], 
+  temporal<- c(temporal, as.numeric(difftime(as.Date(metadata[i, date_col], 
                                                      tryFormats = c("%Y-%m-%d", "%Y-%m", "%Y")), 
                                              as.Date("2020-01-01"), unit="days")) / 365)
 }

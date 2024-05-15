@@ -119,16 +119,38 @@ process runLCUBE {
     input:
     path seqs
     val seed
+    val n
     val prefix
     path metadata
 
     output:
-    path "${prefix}-${seed}-lcube.fa", emit: lcube
+    path "${prefix}-${seed}-lcube.fasta", emit: lcube
     path "${prefix}-${seed}-lcube.csv", emit: lcube_meta
 
     script:
     """
-    Rscript $workflow.projectDir/scripts/lcube.r ${seqs} ${metadata} ${prefix}-${seed}-lcube.fa ${prefix}-${seed}-lcube.csv
+    Rscript $workflow.projectDir/scripts/lcube.r ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-lcube.csv ${prefix}-${seed}-lcube.fasta ${n} ${seed}
+    """
+}
+
+process runBEAST {
+    // Note: long-term this needs to be updated for a BEAST 2 docker image with the requisite lphy package, but for now, set up your own BEAST 2 environment.
+
+    // This process uses LPHY to generate an xml file for BEAST 2, then runs BEAST 2 on the xml file.
+    input:
+    path seqs
+    val seed
+    val prefix
+
+    output:
+    path "${prefix}-${seed}-beast.xml", emit: beast_xml
+    path "${prefix}-${seed}-beast.log", emit: beast_log
+    path "${prefix}-${seed}-beast.trees", emit: beast_trees
+
+    script:
+    """
+    lphy -i ${seqs} -o ${prefix}-${seed}-beast.xml -t 1 -s ${seed}
+    beast -beagle -overwrite ${prefix}-${seed}-beast.xml > ${prefix}-${seed}-beast.log
     """
 }
 

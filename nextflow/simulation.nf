@@ -151,7 +151,7 @@ process generateLphyScripts {
     data {
     // Specify options for reading the date information from file
     options = {ageDirection="forward", ageRegex=".*_.*_(\d*\.\d+|\d+\.\d*)$"};
-    D = readNexus(file="data/simulated.nex", options=options);
+    D = readNexus(file="!{seqs}", options=options);
 
     // Retrieve number of sites in alignment and taxa names
     L = D.nchar();

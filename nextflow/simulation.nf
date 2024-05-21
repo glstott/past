@@ -151,7 +151,7 @@ process generateLphyScripts {
     data {
     // Specify options for reading the date information from file
     options = {ageDirection="forward", ageRegex=".*_.*_(\d*\.\d+|\d+\.\d*)$"};
-    D = readNexus(file="!{seqs}", options=options);
+    D = ReadFasta(file="!{seqs}", options=options);
 
     // Retrieve number of sites in alignment and taxa names
     L = D.nchar();
@@ -234,4 +234,12 @@ workflow{
     simulateBiasedSampling(simulateSequences.out, seed, prefix, p)
 
     // Subsequence dataset using SRS, stratified, and LCUBE
+    n = 10
+    metadata = "metadata.csv"
+    runLCUBE(simulateSequences.out, seed, n, prefix, metadata)
+    runSimpleSampling(simulateSequences.out, seed, n, prefix, metadata)
+
+    // Generate LPHY scripts for BEAST 2
+    generateLphyScripts(simulateSequences.out, seed, prefix)
+    runBEAST(simulateSequences.out, seed, prefix)
 }

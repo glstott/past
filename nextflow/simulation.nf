@@ -112,6 +112,42 @@ process simulateBiasedSampling {
     """
 }
 
+process runSimpleSampling {
+    input:
+    path seqs
+    val seed
+    val n
+    val prefix
+    path metadata
+
+    output:
+    path "${prefix}-${seed}-simple.fasta", emit: simple
+    path "${prefix}-${seed}-simple.csv", emit: simple_meta
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/simpleSample.R ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-simple.csv ${prefix}-${seed}-simple.fasta ${n} ${seed}
+    """
+}
+
+process runStratifiedSampling {
+    input:
+    path seqs
+    val seed
+    val n
+    val prefix
+    path metadata
+
+    output:
+    path "${prefix}-${seed}-stratified.fasta", emit: strat
+    path "${prefix}-${seed}-stratified.csv", emit: strat_meta
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/stratifiedSample.R ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-stratified.csv ${prefix}-${seed}-stratified.fasta ${n} ${seed}
+    """
+}
+
 process runLCUBE {
     // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
     //        for now, set up your own R environment with the necessary packages.
@@ -141,56 +177,14 @@ process generateLphyScripts {
     path seqs
     val seed
     val prefix
+    path subsample_fasta
 
     output:
     path "${prefix}-${seed}.lphy", emit: lphy_script
 
-    shell:
+    script:
     """
-    cat > !{prefix}-!{seed}.lphy << EOL
-    data {
-    // Specify options for reading the date information from file
-    options = {ageDirection="forward", ageRegex=".*_.*_(\d*\.\d+|\d+\.\d*)$"};
-    D = ReadFasta(file="!{seqs}", options=options);
-
-    // Retrieve number of sites in alignment and taxa names
-    L = D.nchar();
-    taxa = D.taxa();
-
-    // Extract Trait information and count # of traits
-    D_trait = extractTrait(taxa=taxa, sep="_", i=0);
-    K = D_trait.canonicalStateCount();
-
-    // Specify the data type for traits and number of pairwise combos
-    dim = K*(K-1)/2;
-    dataType = D_trait.dataType();
-    }
-    model {
-    // Model evolutionary history
-    Π ~ Dirichlet(conc=[2.0, 2.0, 2.0, 2.0]);      // Nucleotide Frequency prior
-    κ ~ LogNormal(meanlog=1.0, sdlog=1.25);        // Transition/transversion ratio prior
-    γ ~ LogNormal(meanlog=0.0, sdlog=2.0);         // Shape parameter for discretized gamma
-    r ~ DiscretizeGamma(shape=γ, ncat=4, 
-            replicates=L);                           // Site rates
-    Θ ~ LogNormal(meanlog=0.0, sdlog=1.0);         // Effective population size prior
-    ψ ~ Coalescent(taxa=taxa, theta=Θ);            // Coalescent time scaled phylogenetic tree prior
-    D ~ PhyloCTMC(Q=hky(kappa=κ, freq=Π), mu=0.004, 
-            siteRates=r, tree=ψ);                    // MCMC for evolution of alignment
-
-    // Model the geographic history
-    // modeled via P(t) = e^(Dt)
-    π_trait ~ Dirichlet(conc=rep(element=3.0, times=K));   // Base frequencies, assuming symmetry
-    I ~ Bernoulli(minSuccesses=dim-2, p=0.5, 
-            replicates=dim);                                 // Determines which rates are 0. 
-                                                            // This, plus select, implements BSSVS.
-    R_trait ~ Dirichlet(conc=rep(element=1.0, times=dim)); // Off-diagonal entries of the rate matrix.
-    Q_trait = generalTimeReversible(rates=select(x=R_trait, 
-                indicator=I), freq=π_trait);               // intantaneous rate matrix
-    μ_trait ~ LogNormal(meanlog=0, sdlog=1.25);            // migration events per unit time
-    D_trait ~ PhyloCTMC(L=1, Q=Q_trait, dataType=dataType, 
-                mu=μ_trait, tree=ψ);                       // MCMC for discrete locations
-    }
-    EOL
+    sed "s|DATAGOESHERE|${subsample_fasta}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${prefix}-${seed}.lphy
     """
 }
 
@@ -238,6 +232,7 @@ workflow{
     metadata = "metadata.csv"
     runLCUBE(simulateSequences.out, seed, n, prefix, metadata)
     runSimpleSampling(simulateSequences.out, seed, n, prefix, metadata)
+    runStratifiedSampling(simulateSequences.out, seed, n, prefix, metadata)
 
     // Generate LPHY scripts for BEAST 2
     generateLphyScripts(simulateSequences.out, seed, prefix)

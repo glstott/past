@@ -2,15 +2,22 @@ library(ape)
 library(diversitree)
 library(phangorn)
 library(treeio)
+library(tibble)
+library(phytools)
 
-# load command line arguments into variables outtree, 
+# load command line arguments into variables outtree,
 #      outhist, taxa number, and seed
 args <- commandArgs(trailingOnly = TRUE)
 outtree <- args[2]
-n <- args[3]
-if (length(args) > 3) {
-  seed <- as.integer(args[4])
+outcsv <- args[3]
+n <- args[4]
+if (length(args) > 4) {
+  seed <- as.integer(args[5])
 }
+# outtree <- "eg20240529.nex"
+# outcsv <- "noice.csv"
+# n <- 100
+# seed<- 12
 
 #instantiate variables
 lambda             <- 9
@@ -71,20 +78,30 @@ print(p)
 # generate tree and estimate discrete history
 phy <- tree.musse(p, max.taxa = n, x0=1, max.t=Inf, include.extinct=TRUE)
 print("The MUSSE has run.")
-# h <- history.from.sim.discrete(phy, 1:5)
-# print("History simulated...")
+h <- history.from.sim.discrete(phy, 1:5)
 
-# plot tree
-phy2 <- phy
+# a whole bunch of funny business to get things into the right format for BEAST NEXUS
+#    relabel and zap for new labels with split.
+zapped_edge_lengths<- zapsmall(node.depth.edgelength(phy)[phy$orig$idx2[match(phy$tip.label, phy$orig$name2)]], digits=4)
+newlabels <- data.frame(label=phy$tip.label, newlabel=paste(phy$tip.label, phy$tip.state,
+                                             zapped_edge_lengths, sep="_"))
+# some centroids for the discrete locales and write out metadata file
+latlist <- c(48.2155, 15.3545, 48.44, 43.4052, 1.5888)
+lnglist <- c(99.5925, 56.0549, 18.55, 87.1952, 32.717)
+write.csv(data.frame(id=paste(phy$tip.label, phy$tip.state,
+                    zapped_edge_lengths, sep="_"), location=phy$tip.state, 
+           Collection_Date=zapped_edge_lengths, lat=latlist[phy$tip.state], 
+           lng=lnglist[phy$tip.state] ), row.names = FALSE, file = outcsv)
 
-zapped_edge_lengths <- zapsmall(node.depth.edgelength(phy)[phy$orig$idx2[match(phy$tip.label, phy$orig$name2)]], digits=4)
-
-# Include dates as part of tip names
-phy2$tip.label <- paste(phy$tip.label, phy$tip.state,
-                        zapped_edge_lengths, sep="_")
+# shuffle about the labels into Tibbles and drop excess garbage that messes with Nexus (e.g. too many factors)
+states <- data.frame(rbind(as.matrix(h$tip.state), as.matrix(h$node.state)))
+states <- rownames_to_column(states, "label")
+colnames(states) <- c("label", "location")
+plz <- phy %>% as_tibble() %>% full_join(states, by="label") 
+plz$newlabel <- plz$label
+plz <- plz %>% rows_update(newlabels, by="label")
+plz$label <- plz$newlabel
+plz<- plz %>% select(-c("newlabel")) %>% as.treedata()
 
 # write tree to file
-write.tree(phy2, outtree)
-
-# # write history to file
-# write.table(h$history, outhist, sep="\t", quote=FALSE, row.names=FALSE, col.names=FALSE)
+write.beast(treedata=plz, file=outtree)

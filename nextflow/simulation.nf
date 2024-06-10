@@ -126,6 +126,7 @@ process runSimpleSampling {
     val seed
     val n
     val prefix
+    path metadata
 
     output:
     path "${prefix}-${seed}-simple.fasta", emit: seq

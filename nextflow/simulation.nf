@@ -17,6 +17,7 @@ Cmd line: $workflow.commandLine
 process trueTree {
     //conda "-c bioconda -c conda-forge r-base r-ape=5.7 r-diversitree r-phangorn=2.11 bioconductor-treeio=1.26.0"
     conda "$workflow.projectDir/envs/simulation.yml"
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
     // Process for generating true trees given a number of taxa.
 
     input:
@@ -28,10 +29,6 @@ process trueTree {
     path "${prefix}-${seed}-${taxa}.nwk", emit: ttree
     path "${prefix}-${seed}-${taxa}.csv", emit: tmeta
 
-    publish:
-    ttree >> "$workflow.projectDir/../raw/"
-    tmeta >> "$workflow.projectDir/../raw/"
-
 
     script:
     """
@@ -42,6 +39,7 @@ process trueTree {
 
 process simulateSequences {
     conda "-c bioconda iqtree"
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
     // Process for simulating sequences given a true tree.
 
     input:
@@ -51,9 +49,6 @@ process simulateSequences {
     output:
     path "${true_tree.simpleName}.fasta", emit: simseq
     //file "${out_meta}" into sim_meta
-
-    publish:
-    simseq >> "$workflow.projectDir/../raw/"
 
     script:
     """
@@ -79,6 +74,7 @@ process splitSamples {
 
 process simulateSimpleSampling {
     conda "-c bioconda seqkit"
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
     //simulate the acquisition of a convenience sample from the simulated sequences
     input:
     path seqs
@@ -89,9 +85,6 @@ process simulateSimpleSampling {
     output:
     path "${prefix}-${seed}-convenience.fasta", emit: simple
 
-    publish:
-    simple >> "$workflow.projectDir/../raw/"
-
     script:
     """
     seqkit sample -p ${p} -s ${seed} ${seqs} > ${prefix}-${seed}-convenience.fasta
@@ -100,6 +93,7 @@ process simulateSimpleSampling {
 
 process simulateBiasedSampling {
     conda "-c bioconda seqkit"
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
     // separate fasta into files by the second delimiter, then sample from each file
     input:
     path seqs
@@ -110,9 +104,6 @@ process simulateBiasedSampling {
     output:
     path "*part_.fa", emit: parts
     path "${prefix}-${seed}-biased.fa", emit: biased
-
-    publish:
-    biased >> "$workflow.projectDir/../raw/"
 
     script:
     """
@@ -127,6 +118,7 @@ process simulateBiasedSampling {
 }
 
 process runSimpleSampling {
+    publishDir "$workflow.projectDir/../sampled/", mode: 'copy'
     input:
     path seqs
     val seed
@@ -138,10 +130,6 @@ process runSimpleSampling {
     path "${prefix}-${seed}-simple.fasta", emit: seq
     path "${prefix}-${seed}-simple.csv", emit: meta
 
-    publish:
-    seq >> "$workflow.projectDir/../seqs/"
-    meta >> "$workflow.projectDir/../meta/"
-
     script:
     """
     Rscript $workflow.projectDir/scripts/simpleSample.R ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-simple.csv ${prefix}-${seed}-simple.fasta ${n} ${seed}
@@ -149,6 +137,7 @@ process runSimpleSampling {
 }
 
 process runStratifiedSampling {
+    publishDir "$workflow.projectDir/../sampled/", mode: 'copy'
     input:
     path seqs
     val seed
@@ -160,10 +149,6 @@ process runStratifiedSampling {
     path "${prefix}-${seed}-stratified.fasta", emit: seq
     path "${prefix}-${seed}-stratified.csv", emit: meta
 
-    publish:
-    seq >> "$workflow.projectDir/../seqs/"
-    meta >> "$workflow.projectDir/../meta/"
-
     script:
     """
     Rscript $workflow.projectDir/scripts/stratifiedSample.R ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-stratified.csv ${prefix}-${seed}-stratified.fasta ${n} ${seed}
@@ -171,6 +156,7 @@ process runStratifiedSampling {
 }
 
 process runLCUBE {
+    publishDir "$workflow.projectDir/../sampled/", mode: 'copy'
     // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
     //        for now, set up your own R environment with the necessary packages.
 
@@ -185,10 +171,6 @@ process runLCUBE {
     path "${prefix}-${seed}-lcube.fasta", emit: seq
     path "${prefix}-${seed}-lcube.csv", emit: meta
 
-    publish:
-    seq >> "$workflow.projectDir/../seqs/"
-    meta >> "$workflow.projectDir/../meta/"
-
     script:
     """
     Rscript $workflow.projectDir/scripts/lcube.r ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-lcube.csv ${prefix}-${seed}-lcube.fasta ${n} ${seed}
@@ -196,6 +178,7 @@ process runLCUBE {
 }
 
 process generateLphyScripts {
+    publishDir "$workflow.projectDir/../lphy/", mode: 'copy'
     input:
     path seqs
     val seed
@@ -203,9 +186,6 @@ process generateLphyScripts {
 
     output:
     path "${prefix}-${seed}.lphy", emit: lphy_script
-
-    publish:
-    lphy_script >> "$workflow.projectDir/../lphy_scripts/"
 
     script:
     """
@@ -264,7 +244,6 @@ workflow{
     biased_s = runSimpleSampling(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
     biased_st = runStratifiedSampling(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
 
-
     // Generate LPHY scripts for BEAST 2
     generateLphyScripts(simple_l.out.seq, seed, prefix+"_simple_lcube")
     generateLphyScripts(simple_s.out.seq, seed, prefix+"_simple_simple")
@@ -272,7 +251,6 @@ workflow{
     generateLphyScripts(biased_l.out.seq, seed, prefix+"_biased_lcube")
     generateLphyScripts(biased_s.out.seq, seed, prefix+"_biased_simple")
     generateLphyScripts(biased_st.out.seq, seed, prefix+"_biased_strat")
-
 
     // Run BEAST 2 on the subsampled datasets
 }

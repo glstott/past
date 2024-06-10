@@ -26,12 +26,17 @@ process trueTree {
 
     output:
     path "${prefix}-${seed}-${taxa}.nwk", emit: ttree
+    path "${prefix}-${seed}-${taxa}.csv", emit: tmeta
+
+    publish:
+    ttree >> "$workflow.projectDir/../raw/"
+    tmeta >> "$workflow.projectDir/../raw/"
 
 
     script:
     """
     pwd
-    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed}-${taxa}.nwk ${taxa} ${seed}
+    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed}-${taxa}.nwk ${prefix}-${seed}-${taxa}.csv ${taxa} ${seed}
     """
 }
 
@@ -44,8 +49,11 @@ process simulateSequences {
     val seed
 
     output:
-    path "${true_tree.simpleName}.fa"
+    path "${true_tree.simpleName}.fasta", emit: simseq
     //file "${out_meta}" into sim_meta
+
+    publish:
+    simseq >> "$workflow.projectDir/../raw/"
 
     script:
     """
@@ -79,11 +87,14 @@ process simulateSimpleSampling {
     val p
 
     output:
-    path "${prefix}-${seed}-convenience.fa", emit: simple
+    path "${prefix}-${seed}-convenience.fasta", emit: simple
+
+    publish:
+    simple >> "$workflow.projectDir/../raw/"
 
     script:
     """
-    seqkit sample -p ${p} -s ${seed} ${seqs} > ${prefix}-${seed}-convenience.fa
+    seqkit sample -p ${p} -s ${seed} ${seqs} > ${prefix}-${seed}-convenience.fasta
     """
 }
 
@@ -99,6 +110,9 @@ process simulateBiasedSampling {
     output:
     path "*part_.fa", emit: parts
     path "${prefix}-${seed}-biased.fa", emit: biased
+
+    publish:
+    biased >> "$workflow.projectDir/../raw/"
 
     script:
     """
@@ -121,8 +135,12 @@ process runSimpleSampling {
     path metadata
 
     output:
-    path "${prefix}-${seed}-simple.fasta", emit: simple
-    path "${prefix}-${seed}-simple.csv", emit: simple_meta
+    path "${prefix}-${seed}-simple.fasta", emit: seq
+    path "${prefix}-${seed}-simple.csv", emit: meta
+
+    publish:
+    seq >> "$workflow.projectDir/../seqs/"
+    meta >> "$workflow.projectDir/../meta/"
 
     script:
     """
@@ -139,8 +157,12 @@ process runStratifiedSampling {
     path metadata
 
     output:
-    path "${prefix}-${seed}-stratified.fasta", emit: strat
-    path "${prefix}-${seed}-stratified.csv", emit: strat_meta
+    path "${prefix}-${seed}-stratified.fasta", emit: seq
+    path "${prefix}-${seed}-stratified.csv", emit: meta
+
+    publish:
+    seq >> "$workflow.projectDir/../seqs/"
+    meta >> "$workflow.projectDir/../meta/"
 
     script:
     """
@@ -160,8 +182,12 @@ process runLCUBE {
     path metadata
 
     output:
-    path "${prefix}-${seed}-lcube.fasta", emit: lcube
-    path "${prefix}-${seed}-lcube.csv", emit: lcube_meta
+    path "${prefix}-${seed}-lcube.fasta", emit: seq
+    path "${prefix}-${seed}-lcube.csv", emit: meta
+
+    publish:
+    seq >> "$workflow.projectDir/../seqs/"
+    meta >> "$workflow.projectDir/../meta/"
 
     script:
     """
@@ -170,17 +196,16 @@ process runLCUBE {
 }
 
 process generateLphyScripts {
-    // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
-    //        for now, set up your own R environment with the necessary packages.
-
     input:
     path seqs
     val seed
     val prefix
-    path subsample_fasta
 
     output:
     path "${prefix}-${seed}.lphy", emit: lphy_script
+
+    publish:
+    lphy_script >> "$workflow.projectDir/../lphy_scripts/"
 
     script:
     """
@@ -188,53 +213,66 @@ process generateLphyScripts {
     """
 }
 
-process runBEAST {
-    // Note: long-term this needs to be updated for a BEAST 2 docker image with the requisite lphy package, but for now, set up your own BEAST 2 environment.
+// process runBEAST {
+//     // Note: long-term this needs to be updated for a BEAST 2 docker image with the requisite lphy package, but for now, set up your own BEAST 2 environment.
 
-    // This process uses LPHY to generate an xml file for BEAST 2, then runs BEAST 2 on the xml file.
-    input:
-    path seqs
-    val seed
-    val prefix
+//     // This process uses LPHY to generate an xml file for BEAST 2, then runs BEAST 2 on the xml file.
+//     input:
+//     path seqs
+//     val seed
+//     val prefix
 
-    output:
-    path "${prefix}-${seed}-beast.xml", emit: beast_xml
-    path "${prefix}-${seed}-beast.log", emit: beast_log
-    path "${prefix}-${seed}-beast.trees", emit: beast_trees
+//     output:
+//     path "${prefix}-${seed}-beast.xml", emit: beast_xml
+//     path "${prefix}-${seed}-beast.log", emit: beast_log
+//     path "${prefix}-${seed}-beast.trees", emit: beast_trees
 
-    script:
-    """
-    lphy -i ${seqs} -o ${prefix}-${seed}-beast.xml -t 1 -s ${seed}
-    beast -beagle -overwrite ${prefix}-${seed}-beast.xml > ${prefix}-${seed}-beast.log
-    """
-}
+//     script:
+//     """
+//     lphy -i ${seqs} -o ${prefix}-${seed}-beast.xml -t 1 -s ${seed}
+//     beast -beagle -overwrite ${prefix}-${seed}-beast.xml > ${prefix}-${seed}-beast.log
+//     """
+// }
 
 workflow{
     // Define the workflow for the simulation.
 
     // Define the parameters for the simulation.
-    taxa = 100
+    taxa = 1000
     seed = 12
-    prefix = "test0315"
-    //out_meta = "sim_meta.csv"
+    prefix = "sim_20240529"
 
     // Run the processes for the simulation.
     trueTree(taxa, seed, prefix)
     simulateSequences(trueTree.out.ttree, seed)
-
+    
     // Simulate sequencing event, biased and standard.
-    p=[0.8, 0.2, 0.8, 0.5, 0.1] // for now, using a hard-coded set of proportions. 
-    simulateSimpleSampling(simulateSequences.out, seed, prefix, 0.1)
-    simulateBiasedSampling(simulateSequences.out, seed, prefix, p)
+    p=[0.8, 0.2, 0.8, 0.5, 0.2] // for now, using a hard-coded set of proportions. 
+    simulateSimpleSampling(simulateSequences.out, seed, 500, prefix, trueTree.out.tmeta)
+    simulateBiasedSampling(simulateSequences.out, trueTree.out.tmeta, seed, prefix, p)
 
     // Subsequence dataset using SRS, stratified, and LCUBE
-    n = 10
-    metadata = "metadata.csv"
-    runLCUBE(simulateSequences.out, seed, n, prefix, metadata)
-    runSimpleSampling(simulateSequences.out, seed, n, prefix, metadata)
-    runStratifiedSampling(simulateSequences.out, seed, n, prefix, metadata)
+    n = 100
+
+    // Run subsampling on simple sequencing dataset
+    simple_l = runLCUBE(simulateSimpleSampling.out.simple, seed, n, prefix+"_simple", simulateSimpleSampling.out.simple_meta)
+    simple_s = runSimpleSampling(simulateSimpleSampling.out.simple, seed, n, prefix+"_simple", simulateSimpleSampling.out.simple_meta)
+    simple_st = runStratifiedSampling(simulateSimpleSampling.out.simple, seed, n, prefix+"_simple", simulateSimpleSampling.out.simple_meta)
+
+    // Run subsampling on biased sequencing dataset
+    biased_l = runLCUBE(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+    biased_s = runSimpleSampling(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+    biased_st = runStratifiedSampling(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+
 
     // Generate LPHY scripts for BEAST 2
-    generateLphyScripts(simulateSequences.out, seed, prefix)
-    runBEAST(simulateSequences.out, seed, prefix)
+    generateLphyScripts(simple_l.out.seq, seed, prefix+"_simple_lcube")
+    generateLphyScripts(simple_s.out.seq, seed, prefix+"_simple_simple")
+    generateLphyScripts(simple_st.out.seq, seed, prefix+"_simple_strat")
+    generateLphyScripts(biased_l.out.seq, seed, prefix+"_biased_lcube")
+    generateLphyScripts(biased_s.out.seq, seed, prefix+"_biased_simple")
+    generateLphyScripts(biased_st.out.seq, seed, prefix+"_biased_strat")
+
+
+    // Run BEAST 2 on the subsampled datasets
 }

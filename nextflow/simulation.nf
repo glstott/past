@@ -102,20 +102,23 @@ process simulateBiasedSampling {
     val seed
     val prefix
     val p
+    path metadata
 
     output:
     path "*part_.fa", emit: parts
-    path "${prefix}-${seed}-biased.fa", emit: biased
+    path "${prefix}-${seed}-biased.fasta", emit: biased
+    path "${prefix}-${seed}-biased.csv", emit: biased_meta
 
-    script:
+    shell:
     """
-    seqkit split ${seqs} -i --id-regexp "^[^_]*_([^_]*)_"
+    seqkit split !{seqs} -i --id-regexp "^[^_]*_([^_]*)_"
     i=0
 
     for file in *part_.fa; do
-        seqkit sample -p ${p[i]} -s ${seed} $file >> ${prefix}-${seed}-biased.fa
+        seqkit sample -p !{p[i]} -s !{seed} $file >> !{prefix}-!{seed}-biased.fasta
         i += 1
     done
+    awk -F, 'NR==1 {print; next} FNR==NR {if (substr($0, 1, 1) == ">") a[substr($0, 2)] = 1; next} $1 in a' !{prefix}-!{seed}-biased.fasta !metadata > !{prefix}-!{seed}-biased.csv
     """
 }
 

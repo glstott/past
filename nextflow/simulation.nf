@@ -81,6 +81,7 @@ process simulateSimpleSampling {
     val seed
     val prefix
     val p
+    path metadata
 
     output:
     path "${prefix}-${seed}-convenience.fasta", emit: simple
@@ -88,6 +89,7 @@ process simulateSimpleSampling {
     script:
     """
     seqkit sample -p ${p} -s ${seed} ${seqs} > ${prefix}-${seed}-convenience.fasta
+    grep "^>" ${prefix}-${seed}-convenience.fasta | sed 's/>//' > headers.txt
     """
 }
 
@@ -124,7 +126,6 @@ process runSimpleSampling {
     val seed
     val n
     val prefix
-    path metadata
 
     output:
     path "${prefix}-${seed}-simple.fasta", emit: seq
@@ -228,16 +229,16 @@ workflow{
     
     // Simulate sequencing event, biased and standard.
     p=[0.8, 0.2, 0.8, 0.5, 0.2] // for now, using a hard-coded set of proportions. 
-    simulateSimpleSampling(simulateSequences.out, seed, 500, prefix, trueTree.out.tmeta)
+    s = runSimpleSampling(simulateSequences.out, seed, 500, prefix, trueTree.out.tmeta)
     simulateBiasedSampling(simulateSequences.out, trueTree.out.tmeta, seed, prefix, p)
 
     // Subsequence dataset using SRS, stratified, and LCUBE
     n = 100
 
     // Run subsampling on simple sequencing dataset
-    simple_l = runLCUBE(simulateSimpleSampling.out.simple, seed, n, prefix+"_simple", simulateSimpleSampling.out.simple_meta)
-    simple_s = runSimpleSampling(simulateSimpleSampling.out.simple, seed, n, prefix+"_simple", simulateSimpleSampling.out.simple_meta)
-    simple_st = runStratifiedSampling(simulateSimpleSampling.out.simple, seed, n, prefix+"_simple", simulateSimpleSampling.out.simple_meta)
+    simple_l = runLCUBE(s.seq, seed, n, prefix+"_simple", s.meta)
+    simple_s = runSimpleSampling(s.seq, seed, n, prefix+"_simple", s.meta)
+    simple_st = runStratifiedSampling(s.seq, seed, n, prefix+"_simple", s.meta)
 
     // Run subsampling on biased sequencing dataset
     biased_l = runLCUBE(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)

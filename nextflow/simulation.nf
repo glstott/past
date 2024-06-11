@@ -27,13 +27,13 @@ process trueTree {
 
     output:
     path "${prefix}-${seed}-${taxa}.nwk", emit: ttree
+    path "${prefix}-${seed}-${taxa}.nex", emit: ttree_nex
     path "${prefix}-${seed}-${taxa}.csv", emit: tmeta
 
 
     script:
     """
-    pwd
-    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed}-${taxa}.nwk ${prefix}-${seed}-${taxa}.csv ${taxa} ${seed}
+    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed}-${taxa} ${prefix}-${seed}-${taxa}.csv ${taxa} ${seed}
     """
 }
 
@@ -47,7 +47,7 @@ process simulateSequences {
     val seed
 
     output:
-    path "${true_tree.simpleName}.fasta", emit: simseq
+    path "${true_tree.simpleName}.fa", emit: simseq
     //file "${out_meta}" into sim_meta
 
     script:
@@ -109,16 +109,16 @@ process simulateBiasedSampling {
     path "${prefix}-${seed}-biased.fasta", emit: biased
     path "${prefix}-${seed}-biased.csv", emit: biased_meta
 
-    shell:
+    script:
     """
-    seqkit split !{seqs} -i --id-regexp "^[^_]*_([^_]*)_"
+    seqkit split ${seqs} -i --id-regexp "^[^_]*_([^_]*)_"
     i=0
 
     for file in *part_.fa; do
-        seqkit sample -p !{p[i]} -s !{seed} $file >> !{prefix}-!{seed}-biased.fasta
+        seqkit sample -p ${p[i]} -s ${seed} \$file >> ${prefix}-${seed}-biased.fasta
         i += 1
     done
-    awk -F, 'NR==1 {print; next} FNR==NR {if (substr($0, 1, 1) == ">") a[substr($0, 2)] = 1; next} $1 in a' !{prefix}-!{seed}-biased.fasta !metadata > !{prefix}-!{seed}-biased.csv
+    awk -F, 'NR==1 {print; next} FNR==NR {if (substr(\$0, 1, 1) == ">") a[substr(\$0, 2)] = 1; next} \$1 in a' ${prefix}-${seed}-biased.fasta $metadata > ${prefix}-${seed}-biased.csv
     """
 }
 
@@ -137,7 +137,7 @@ process runSimpleSampling {
 
     script:
     """
-    Rscript $workflow.projectDir/scripts/simpleSample.R ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-simple.csv ${prefix}-${seed}-simple.fasta ${n} ${seed}
+    Rscript $workflow.projectDir/scripts/simpleSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-simple.csv ${prefix}-${seed}-simple.fasta ${n} ${seed}
     """
 }
 
@@ -156,7 +156,7 @@ process runStratifiedSampling {
 
     script:
     """
-    Rscript $workflow.projectDir/scripts/stratifiedSample.R ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-stratified.csv ${prefix}-${seed}-stratified.fasta ${n} ${seed}
+    Rscript $workflow.projectDir/scripts/stratifiedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-stratified.csv ${prefix}-${seed}-stratified.fasta ${n} ${seed}
     """
 }
 
@@ -178,7 +178,7 @@ process runLCUBE {
 
     script:
     """
-    Rscript $workflow.projectDir/scripts/lcube.r ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-lcube.csv ${prefix}-${seed}-lcube.fasta ${n} ${seed}
+    Rscript $workflow.projectDir/scripts/lcube.r --vanilla ${metadata} id Collection_Date ${seqs} ${prefix}-${seed}-lcube.csv ${prefix}-${seed}-lcube.fasta ${n} ${seed}
     """
 }
 
@@ -194,7 +194,7 @@ process generateLphyScripts {
 
     script:
     """
-    sed "s|DATAGOESHERE|${subsample_fasta}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${prefix}-${seed}.lphy
+    sed "s|DATAGOESHERE|${seqs}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${prefix}-${seed}.lphy
     """
 }
 

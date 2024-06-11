@@ -14,7 +14,7 @@ Cmd line: $workflow.commandLine
 ==================================
 """
 
-include {trueTree; simulateSequences; runSimpleSampling; runSimpleSampling as simple2; runSimpleSampling as simple3; runLCUBE; runLCUBE as runLCUBE2; runStratifiedSampling; runStratifiedSampling as runStratifiedSampling2; generateLphyScripts as lphyLCUBE; generateLphyScripts as lphySimple; generateLphyScripts as lphyStratified;  generateLphyScripts as lphyLCUBE2; generateLphyScripts as lphySimple2; generateLphyScripts as lphyStratified2} from '$workflow.projectDir/simulation.nf'
+include {trueTree; simulateSequences; simulateBiasedSampling; runSimpleSampling; runSimpleSampling as simple2; runSimpleSampling as simple3; runLCUBE; runLCUBE as runLCUBE2; runStratifiedSampling; runStratifiedSampling as runStratifiedSampling2; generateLphyScripts as lphyLCUBE; generateLphyScripts as lphySimple; generateLphyScripts as lphyStratified;  generateLphyScripts as lphyLCUBE2; generateLphyScripts as lphySimple2; generateLphyScripts as lphyStratified2} from './simulation.nf'
 
 
 
@@ -33,7 +33,7 @@ workflow{
     // Simulate sequencing event, biased and standard.
     p=[0.8, 0.2, 0.8, 0.5, 0.2] // for now, using a hard-coded set of proportions. 
     s = runSimpleSampling(simulateSequences.out, seed, 500, prefix, trueTree.out.tmeta)
-    simulateBiasedSampling(simulateSequences.out, trueTree.out.tmeta, seed, prefix, p)
+//    simulateBiasedSampling(simulateSequences.out, seed, prefix, p, trueTree.out.tmeta)
 
     // Subsequence dataset using SRS, stratified, and LCUBE
     n = 100
@@ -44,17 +44,17 @@ workflow{
     simple_st = runStratifiedSampling(s.seq, seed, n, prefix+"_simple", s.meta)
 
     // Run subsampling on biased sequencing dataset
-    biased_l = runLCUBE2(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
-    biased_s = simple3(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
-    biased_st = runStratifiedSampling2(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+ //   biased_l = runLCUBE2(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+ //   biased_s = simple3(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+ //   biased_st = runStratifiedSampling2(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
 
     // Generate LPHY scripts for BEAST 2
-    lphyLCUBE(simple_l.out.seq, seed, prefix+"_simple_lcube")
-    lphySimple(simple_s.out.seq, seed, prefix+"_simple_simple")
-    lphyStratified(simple_st.out.seq, seed, prefix+"_simple_strat")
-    lphyLCUBE2(biased_l.out.seq, seed, prefix+"_biased_lcube")
-    lphySimple2(biased_s.out.seq, seed, prefix+"_biased_simple")
-    lphyStratified2(biased_st.out.seq, seed, prefix+"_biased_strat")
+    lphyLCUBE(simple_l.seq, seed, prefix+"_simple_lcube")
+    lphySimple(simple_s.seq, seed, prefix+"_simple_simple")
+    lphyStratified(simple_st.seq, seed, prefix+"_simple_strat")
+ //   lphyLCUBE2(biased_l.seq, seed, prefix+"_biased_lcube")
+ //   lphySimple2(biased_s.seq, seed, prefix+"_biased_simple")
+ //   lphyStratified2(biased_st.seq, seed, prefix+"_biased_strat")
 
     // Run BEAST 2 on the subsampled datasets
 }

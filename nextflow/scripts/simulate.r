@@ -2,6 +2,7 @@ library(ape)
 library(diversitree)
 library(phangorn)
 library(treeio)
+library(dplyr)
 library(tibble)
 library(phytools)
 
@@ -10,10 +11,11 @@ library(phytools)
 args <- commandArgs(trailingOnly = TRUE)
 outtree <- args[2]
 outcsv <- args[3]
-n <- args[4]
+n <- as.numeric(args[4])
 if (length(args) > 4) {
   seed <- as.integer(args[5])
 }
+print(seed)
 # outtree <- "eg20240529.nex"
 # outcsv <- "noice.csv"
 # n <- 100
@@ -114,4 +116,5 @@ plz$label <- plz$newlabel
 plz<- plz %>% select(-c("newlabel")) %>% as.treedata()
 
 # write tree to file
-write.beast(treedata=plz, file=outtree)
+write.beast(treedata=plz, file=paste0(outtree, ".nex"))
+write.tree(as.phylo(plz), file=paste0(outtree, ".nwk"))

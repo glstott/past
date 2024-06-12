@@ -1,14 +1,14 @@
 data {
   // Specify options for reading the date information from file
-  options = {ageDirection="forward", ageRegex=".*_.*_(\d*\.\d+|\d+\.\d*)$"};
-  D = readNexus(file="DATAGOESHERE", options=options);
+  options = {ageDirection="forward", ageRegex=".*_.*_(\d*\.\d+|\d+\.\d*|\d*)$"};
+  D = readFasta(file="sampled/DATAGOESHERE", options=options);
 
   // Retrieve number of sites in alignment and taxa names
   L = D.nchar();
   taxa = D.taxa();
 
   // Extract Trait information and count # of traits
-  D_trait = extractTrait(taxa=taxa, sep="_", i=0);
+  D_trait = extractTrait(taxa=taxa, sep="_", i=1);
   K = D_trait.canonicalStateCount();
 
   // Specify the data type for traits and number of pairwise combos

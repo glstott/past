@@ -22,7 +22,7 @@ print(seed)
 # seed<- 8
 
 #instantiate variables
-lambda             <- 9
+lambda             <- 12
 base_trans_freq    <- 0.5
 mu                 <- 3
 sample_proportions <- c(0.1, 0.01, 0.1, 0.05, 0.01)
@@ -88,7 +88,9 @@ while (validGate == F && trycount < 10) {
     phy <- tree.musse(p, max.taxa = n, x0=1, max.t=Inf, include.extinct=TRUE)
     print("The MUSSE has run.")
     h <- history.from.sim.discrete(phy, 1:5)
-    validGate <- T
+    if (length(phy$tip.label) >= n){
+      validGate <- T
+    }
   }, error=function(e){}, finally={})
 }
 
@@ -97,6 +99,11 @@ while (validGate == F && trycount < 10) {
 zapped_edge_lengths<- zapsmall(node.depth.edgelength(phy)[phy$orig$idx2[match(phy$tip.label, phy$orig$name2)]], digits=4)
 newlabels <- data.frame(label=phy$tip.label, newlabel=paste(phy$tip.label, phy$tip.state,
                                              zapped_edge_lengths, sep="_"))
+print(length(phy$tip.label))
+phy2<-phy
+phy2$tip.label<-newlabels$newlabel
+write.tree(phy2, file=paste0(outtree, ".nwk"))
+
 # some centroids for the discrete locales and write out metadata file
 latlist <- c(48.2155, 15.3545, 48.44, 43.4052, 1.5888)
 lnglist <- c(99.5925, 56.0549, 18.55, 87.1952, 32.717)
@@ -110,6 +117,8 @@ states <- data.frame(rbind(as.matrix(h$tip.state), as.matrix(h$node.state)))
 states <- rownames_to_column(states, "label")
 colnames(states) <- c("label", "location")
 plz <- phy %>% as_tibble() %>% full_join(states, by="label") 
+phy$tip.label <- newlabels$newlabel
+
 plz$newlabel <- plz$label
 plz <- plz %>% rows_update(newlabels, by="label")
 plz$label <- plz$newlabel
@@ -117,4 +126,4 @@ plz<- plz %>% select(-c("newlabel")) %>% as.treedata()
 
 # write tree to file
 write.beast(treedata=plz, file=paste0(outtree, ".nex"))
-write.tree(as.phylo(plz), file=paste0(outtree, ".nwk"))
+write.tree(phy, file=paste0(outtree, ".nwk"))

@@ -14,47 +14,122 @@ Cmd line: $workflow.commandLine
 ==================================
 """
 
-include {trueTree; simulateSequences; simulateBiasedSampling; runSimpleSampling; runSimpleSampling as simple2; runSimpleSampling as simple3; runLCUBE; runLCUBE as runLCUBE2; runStratifiedSampling; runStratifiedSampling as runStratifiedSampling2; generateLphyScripts as lphyLCUBE; generateLphyScripts as lphySimple; generateLphyScripts as lphyStratified;  generateLphyScripts as lphyLCUBE2; generateLphyScripts as lphySimple2; generateLphyScripts as lphyStratified2} from './simulation.nf'
+params.n = 100
+params.taxa = 1000
+params.sequenced = 500
+params.prefix = "sim_0613"
 
 
+process trueTree {
+    //conda "-c bioconda -c conda-forge r-base r-ape=5.7 r-diversitree r-phangorn=2.11 bioconductor-treeio=1.26.0"
+    //conda "$workflow.projectDir/envs/simulation.yml"
+    conda "-c bioconda iqtree"
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    // Process for generating true trees given a number of taxa.
 
-workflow{
-    // Define the workflow for the simulation.
+    input:
+    val seed
+    val taxa
+    val prefix
 
-    // Define the parameters for the simulation.
-    taxa = 1000
-    seed = 12
-    prefix = "sim_20240529"
+    output:
+    tuple path("${prefix}-${seed}.fa"), path("${prefix}-${seed}.csv"), val(seed), emit: data
+    path "${prefix}-${seed}.nwk", emit: ttree
+    path "${prefix}-${seed}.nex", emit: ttree_nex
 
-    // Run the processes for the simulation.
-    trueTree(taxa, seed, prefix)
-    simulateSequences(trueTree.out.ttree, seed)
-    
-    // Simulate sequencing event, biased and standard.
-    p=[0.8, 0.2, 0.8, 0.5, 0.2] // for now, using a hard-coded set of proportions. 
-    s = runSimpleSampling(simulateSequences.out, seed, 500, prefix, trueTree.out.tmeta)
-//    simulateBiasedSampling(simulateSequences.out, seed, prefix, p, trueTree.out.tmeta)
 
-    // Subsequence dataset using SRS, stratified, and LCUBE
-    n = 100
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed} ${prefix}-${seed}.csv ${taxa} ${seed}
+    iqtree2 --alisim ${prefix}-${seed} -m HKY --branch-scale 0.004 --length 1500 -t ${prefix}-${seed}.nwk --out-format fasta  ${seed}
+    """
+}
 
-    // Run subsampling on simple sequencing dataset
-    simple_l = runLCUBE(s.seq, seed, n, prefix+"_simple", s.meta)
-    simple_s = simple2(s.seq, seed, n, prefix+"_simple", s.meta)
-    simple_st = runStratifiedSampling(s.seq, seed, n, prefix+"_simple", s.meta)
+process convenienceSampling {
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
 
-    // Run subsampling on biased sequencing dataset
- //   biased_l = runLCUBE2(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
- //   biased_s = simple3(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
- //   biased_st = runStratifiedSampling2(simulateBiasedSampling.out.biased, seed, n, prefix+"_biased", simulateBiasedSampling.out.biased_meta)
+    output:
+    tuple path("${seqs.simpleName}_s${n}.fasta"), path("${seqs.simpleName}_s${n}.csv"), val(seed), emit: data
 
-    // Generate LPHY scripts for BEAST 2
-    lphyLCUBE(simple_l.seq, seed, prefix+"_simple_lcube")
-    lphySimple(simple_s.seq, seed, prefix+"_simple_simple")
-    lphyStratified(simple_st.seq, seed, prefix+"_simple_strat")
- //   lphyLCUBE2(biased_l.seq, seed, prefix+"_biased_lcube")
- //   lphySimple2(biased_s.seq, seed, prefix+"_biased_simple")
- //   lphyStratified2(biased_st.seq, seed, prefix+"_biased_strat")
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/convenienceSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_s${n}.csv ${seqs.simpleName}_s${n}.fasta ${n} ${seed}
+    """
+}
 
-    // Run BEAST 2 on the subsampled datasets
+process runSimpleSampling {
+    publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+
+    output:
+    tuple path("${seqs.simpleName}_s${n}.fasta"), path("${seqs.simpleName}_s${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/simpleSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_s${n}.csv ${seqs.simpleName}_s${n}.fasta ${n} ${seed}
+    """
+}
+
+process runStratifiedSampling {
+    publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+
+    output:
+    tuple path("${seqs.simpleName}_t${n}.fasta"), path("${seqs.simpleName}_t${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/stratifiedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_t${n}.csv ${seqs.simpleName}_t${n}.fasta ${n} ${seed}
+    """
+}
+
+process runLCUBE {
+    publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
+    // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
+    //        for now, set up your own R environment with the necessary packages.
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+
+    output:
+    tuple path("${seqs.simpleName}_l${n}.fasta"), path("${seqs.simpleName}_l${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/lcube.r --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_l${n}.csv ${seqs.simpleName}_l${n}.fasta ${n} ${seed}
+    """
+}
+
+process generateLphyScripts {
+    publishDir "$workflow.projectDir/../lphy/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+
+    output:
+    path "${seqs.simpleName}.lphy", emit: lphy_script
+    path "${seqs.simpleName}-100M.xml", emit: beast_xml
+
+    script:
+    """
+    sed "s|DATAGOESHERE|${seqs}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${seqs.simpleName}.lphy
+    lphybeast ${seqs.simpleName}.lphy -l 100000000 -o ${seqs.simpleName}-100M.xml
+    """
+}
+
+
+workflow {
+    c=channel.of(1..10) 
+    t=trueTree(seed=c, taxa=params.taxa, prefix=params.prefix)
+    c=convenienceSampling(t.data, params.sequenced)
+    simple=runSimpleSampling(c.data, params.n)
+    stratified=runStratifiedSampling(c.data, params.n)
+    lcube=runLCUBE(c.data, params.n)
+    simple.mix(stratified,lcube) | generateLphyScripts
 }

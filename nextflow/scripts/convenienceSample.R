@@ -42,15 +42,6 @@ set.seed(seed)
 # Get the number of sequences in the FASTA file
 N <- length(fa)
 
-# get temporal distance matrix and collect lat long vals
-temporal<- c()
-for (i in 1:nrow(metadata)) {
-  temporal<- c(temporal, as.numeric(difftime(as.Date(metadata[i, date_col], 
-                                                     tryFormats = c("%Y-%m-%d", "%Y-%m", "%Y")), 
-                                             as.Date("2020-01-01"), unit="days")) / 365)
-}
-metadata$timediff <- temporal
-
 # get the subsample
 p = rep(n/N, N)
 print(nrow(metadata))

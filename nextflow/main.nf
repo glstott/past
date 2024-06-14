@@ -18,6 +18,7 @@ params.n = 100
 params.taxa = 1000
 params.sequenced = 500
 params.prefix = "sim_0613"
+params.p = "c(0.1,0.8,0.8,0.8,0.8)"
 
 
 process trueTree {
@@ -57,6 +58,22 @@ process convenienceSampling {
     script:
     """
     Rscript $workflow.projectDir/scripts/convenienceSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_s${n}.csv ${seqs.simpleName}_s${n}.fasta ${n} ${seed}
+    """
+}
+
+process geoBiasedSampling {
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+    val p
+
+    output:
+    tuple path("${seqs.simpleName}_b${n}.fasta"), path("${seqs.simpleName}_b${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/biasedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_b${n}.csv ${seqs.simpleName}_b${n}.fasta ${n} ${seed} ${p}
     """
 }
 
@@ -127,7 +144,9 @@ process generateLphyScripts {
 workflow {
     c=channel.of(1..10) 
     t=trueTree(seed=c, taxa=params.taxa, prefix=params.prefix)
-    c=convenienceSampling(t.data, params.sequenced)
+    simpleConvenience=convenienceSampling(t.data, params.sequenced)
+    biasedConvenience=geoBiasedSampling(t.data, params.sequenced, params.p)
+    c=simpleConvenience.mix(biasedConvenience)
     simple=runSimpleSampling(c.data, params.n)
     stratified=runStratifiedSampling(c.data, params.n)
     lcube=runLCUBE(c.data, params.n)

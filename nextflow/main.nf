@@ -41,7 +41,7 @@ process trueTree {
     script:
     """
     Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed} ${prefix}-${seed}.csv ${taxa} ${seed}
-    iqtree2 --alisim ${prefix}-${seed} -m HKY --branch-scale 0.004 --length 1500 -t ${prefix}-${seed}.nwk --out-format fasta  ${seed}
+    iqtree2 --alisim ${prefix}-${seed} -m HKY --branch-scale 0.012 --length 1500 -t ${prefix}-${seed}.nwk --out-format fasta  ${seed}
     """
 }
 

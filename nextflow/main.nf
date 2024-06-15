@@ -14,10 +14,12 @@ Cmd line: $workflow.commandLine
 ==================================
 """
 
-params.n = 100
-params.taxa = 1000
-params.sequenced = 500
+params.n = 500
+params.taxa = 5000
+params.sequenced = 2500
 params.prefix = "sim_0613"
+params.p = "c(0.1,0.8,0.8,0.8,0.8)"
+params.loc="4"
 
 
 process trueTree {
@@ -57,6 +59,38 @@ process convenienceSampling {
     script:
     """
     Rscript $workflow.projectDir/scripts/convenienceSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_s${n}.csv ${seqs.simpleName}_s${n}.fasta ${n} ${seed}
+    """
+}
+
+process geoBiasedSampling {
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+    val p
+
+    output:
+    tuple path("${seqs.simpleName}_b${n}.fasta"), path("${seqs.simpleName}_b${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/biasedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_b${n}.csv ${seqs.simpleName}_b${n}.fasta ${n} ${seed} ${p}
+    """
+}
+
+process temporalBiasedSampling {
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+    val loc
+
+    output:
+    tuple path("${seqs.simpleName}_${loc}t${n}.fasta"), path("${seqs.simpleName}_${loc}t${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/temporalBiasedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_${loc}t${n}.csv ${seqs.simpleName}_${loc}t${n}.fasta ${n} ${seed} ${loc}
     """
 }
 
@@ -113,9 +147,8 @@ process generateLphyScripts {
     tuple path(seqs), path(metadata), val(seed)
 
     output:
-    path "${seqs.simpleName}.lphy", emit: lphy_script
-    path "${seqs.simpleName}-100M.xml", emit: beast_xml
-
+    tuple path("${seqs.simpleName}-100M.xml"), val(seed), path("${seqs.simpleName}.lphy"), emit: data
+    
     script:
     """
     sed "s|DATAGOESHERE|${seqs}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${seqs.simpleName}.lphy
@@ -123,13 +156,43 @@ process generateLphyScripts {
     """
 }
 
+process executeBeast {
+    publishDir "$workflow.projectDir/../trees/", mode: 'copy'
+    input:
+    tuple path(xml), val(seed), path(lphy)
+
+    output:
+    path "${xml.simpleName}.log", emit: log
+    path "${xml.simpleName}.trees", emit: trees
+    path "${xml.simpleName}_with_trait.trees", emit: trees_log
+    path "${xml.simpleName}.xml.state", optional: true, emit: state
+    path "${xml.simpleName}.out", optional: true, emit: out
+    path "${xml.simpleName}.sh", optional: true, emit: batch
+
+    script:
+    """
+    sed "s|WHICH|${xml.simpleName}|g" $workflow.projectDir/scripts/beast.sh > ${xml.simpleName}.sh
+    sbatch ${xml.simpleName}.sh
+    """
+
+}
+
 
 workflow {
-    c=channel.of(1..10) 
+    c=channel.of(1..5) 
     t=trueTree(seed=c, taxa=params.taxa, prefix=params.prefix)
-    c=convenienceSampling(t.data, params.sequenced)
+
+    // set up sampling schemata
+    simpleConvenience=convenienceSampling(t.data, params.sequenced)
+    biasedConvenience=geoBiasedSampling(t.data, params.sequenced, params.p)
+    temporalBiasedConvenience=temporalBiasedSampling(t.data, params.sequenced, params.loc)
+    c=simpleConvenience.mix(biasedConvenience,temporalBiasedConvenience)
+
+    // perform subsampling
     simple=runSimpleSampling(c.data, params.n)
     stratified=runStratifiedSampling(c.data, params.n)
     lcube=runLCUBE(c.data, params.n)
-    simple.mix(stratified,lcube) | generateLphyScripts
+
+    // generate BEAST XML files
+    simple.mix(stratified,lcube) | generateLphyScripts | executeBeast
 }

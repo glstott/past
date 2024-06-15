@@ -147,9 +147,8 @@ process generateLphyScripts {
     tuple path(seqs), path(metadata), val(seed)
 
     output:
-    path "${seqs.simpleName}.lphy", emit: lphy_script
-    path "${seqs.simpleName}-100M.xml", emit: beast_xml
-
+    tuple path("${seqs.simpleName}-100M.xml"), val(seed), path("${seqs.simpleName}.lphy"), emit: data
+    
     script:
     """
     sed "s|DATAGOESHERE|${seqs}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${seqs.simpleName}.lphy
@@ -157,16 +156,43 @@ process generateLphyScripts {
     """
 }
 
+process executeBeast {
+    publishDir "$workflow.projectDir/../trees/", mode: 'copy'
+    input:
+    tuple path(xml), val(seed), path(lphy)
+
+    output:
+    path "${xml.simpleName}.log", emit: log
+    path "${xml.simpleName}.trees", emit: trees
+    path "${xml.simpleName}_with_trait.trees", emit: trees_log
+    path "${xml.simpleName}.xml.state", optional: true, emit: state
+    path "${xml.simpleName}.out", optional: true, emit: out
+    path "${xml.simpleName}.sh", optional: true, emit: batch
+
+    script:
+    """
+    sed "s|WHICH|${xml.simpleName}|g" $workflow.projectDir/scripts/beast.sh > ${xml.simpleName}.sh
+    sbatch ${xml.simpleName}.sh
+    """
+
+}
+
 
 workflow {
     c=channel.of(1..5) 
     t=trueTree(seed=c, taxa=params.taxa, prefix=params.prefix)
+
+    // set up sampling schemata
     simpleConvenience=convenienceSampling(t.data, params.sequenced)
     biasedConvenience=geoBiasedSampling(t.data, params.sequenced, params.p)
     temporalBiasedConvenience=temporalBiasedSampling(t.data, params.sequenced, params.loc)
     c=simpleConvenience.mix(biasedConvenience,temporalBiasedConvenience)
+
+    // perform subsampling
     simple=runSimpleSampling(c.data, params.n)
     stratified=runStratifiedSampling(c.data, params.n)
     lcube=runLCUBE(c.data, params.n)
-    simple.mix(stratified,lcube) | generateLphyScripts
+
+    // generate BEAST XML files
+    simple.mix(stratified,lcube) | generateLphyScripts | executeBeast
 }

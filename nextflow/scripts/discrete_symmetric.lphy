@@ -1,7 +1,7 @@
 data {
   // Specify options for reading the date information from file
   options = {ageDirection="forward", ageRegex=".*_.*_(\d*\.\d+|\d+\.\d*|\d*)$"};
-  D = readFasta(file="sampled/DATAGOESHERE", options=options);
+  D = readFasta(file="DATAGOESHERE", options=options);
 
   // Retrieve number of sites in alignment and taxa names
   L = D.nchar();

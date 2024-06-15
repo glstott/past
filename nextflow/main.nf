@@ -18,7 +18,7 @@ params.n = 500
 params.taxa = 5000
 params.sequenced = 2500
 params.prefix = "sim_0613"
-params.p = "c(0.1,0.8,0.8,0.8,0.8)"
+params.p="\"c(0.1,0.8,0.8,0.8,0.8)\""
 params.loc="4"
 
 
@@ -128,6 +128,7 @@ process runLCUBE {
     publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
     // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
     //        for now, set up your own R environment with the necessary packages.
+    
     input:
     tuple path(seqs), path(metadata), val(seed)
     val n
@@ -143,6 +144,7 @@ process runLCUBE {
 
 process generateLphyScripts {
     publishDir "$workflow.projectDir/../lphy/", mode: 'copy'
+    
     input:
     tuple path(seqs), path(metadata), val(seed)
 
@@ -157,22 +159,17 @@ process generateLphyScripts {
 }
 
 process executeBeast {
-    publishDir "$workflow.projectDir/../trees/", mode: 'copy'
+    publishDir "$workflow.projectDir/../lphy/", mode: 'copy'
+    
     input:
     tuple path(xml), val(seed), path(lphy)
 
     output:
-    path "${xml.simpleName}.log", emit: log
-    path "${xml.simpleName}.trees", emit: trees
-    path "${xml.simpleName}_with_trait.trees", emit: trees_log
-    path "${xml.simpleName}.xml.state", optional: true, emit: state
-    path "${xml.simpleName}.out", optional: true, emit: out
-    path "${xml.simpleName}.sh", optional: true, emit: batch
+    path "${xml.simpleName}.sh",  emit: batch
 
     script:
     """
-    sed "s|WHICH|${xml.simpleName}|g" $workflow.projectDir/scripts/beast.sh > ${xml.simpleName}.sh
-    sbatch ${xml.simpleName}.sh
+    sed "s|WHICH|${xml.simpleName}.xml|g" $workflow.projectDir/scripts/beast.sh > ${xml.simpleName}.sh
     """
 
 }
@@ -186,12 +183,12 @@ workflow {
     simpleConvenience=convenienceSampling(t.data, params.sequenced)
     biasedConvenience=geoBiasedSampling(t.data, params.sequenced, params.p)
     temporalBiasedConvenience=temporalBiasedSampling(t.data, params.sequenced, params.loc)
-    c=simpleConvenience.mix(biasedConvenience,temporalBiasedConvenience)
+    c=simpleConvenience.mix(biasedConvenience, temporalBiasedConvenience)
 
     // perform subsampling
-    simple=runSimpleSampling(c.data, params.n)
-    stratified=runStratifiedSampling(c.data, params.n)
-    lcube=runLCUBE(c.data, params.n)
+    simple=runSimpleSampling(c, params.n)
+    stratified=runStratifiedSampling(c, params.n)
+    lcube=runLCUBE(c, params.n)
 
     // generate BEAST XML files
     simple.mix(stratified,lcube) | generateLphyScripts | executeBeast

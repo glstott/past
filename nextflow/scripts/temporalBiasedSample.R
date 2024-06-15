@@ -43,7 +43,7 @@ set.seed(seed)
 
 # Get the number of sequences in the FASTA file
 N <- length(fa)
-
+megameta<-metadata
 megameta$probability<- 1
 megameta[megameta$location == probs, "probability"] <- 1-megameta[megameta$location == probs, date_col]
 

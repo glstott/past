@@ -14,11 +14,12 @@ Cmd line: $workflow.commandLine
 ==================================
 """
 
-params.n = 100
-params.taxa = 1000
-params.sequenced = 500
+params.n = 500
+params.taxa = 5000
+params.sequenced = 2500
 params.prefix = "sim_0613"
 params.p = "c(0.1,0.8,0.8,0.8,0.8)"
+params.loc="4"
 
 
 process trueTree {
@@ -74,6 +75,22 @@ process geoBiasedSampling {
     script:
     """
     Rscript $workflow.projectDir/scripts/biasedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_b${n}.csv ${seqs.simpleName}_b${n}.fasta ${n} ${seed} ${p}
+    """
+}
+
+process temporalBiasedSampling {
+    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    input:
+    tuple path(seqs), path(metadata), val(seed)
+    val n
+    val loc
+
+    output:
+    tuple path("${seqs.simpleName}_${loc}t${n}.fasta"), path("${seqs.simpleName}_${loc}t${n}.csv"), val(seed), emit: data
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/temporalBiasedSample.R --vanilla ${metadata} id Collection_Date ${seqs} ${seqs.simpleName}_${loc}t${n}.csv ${seqs.simpleName}_${loc}t${n}.fasta ${n} ${seed} ${loc}
     """
 }
 
@@ -142,11 +159,12 @@ process generateLphyScripts {
 
 
 workflow {
-    c=channel.of(1..10) 
+    c=channel.of(1..5) 
     t=trueTree(seed=c, taxa=params.taxa, prefix=params.prefix)
     simpleConvenience=convenienceSampling(t.data, params.sequenced)
     biasedConvenience=geoBiasedSampling(t.data, params.sequenced, params.p)
-    c=simpleConvenience.mix(biasedConvenience)
+    temporalBiasedConvenience=temporalBiasedSampling(t.data, params.sequenced, params.loc)
+    c=simpleConvenience.mix(biasedConvenience,temporalBiasedConvenience)
     simple=runSimpleSampling(c.data, params.n)
     stratified=runStratifiedSampling(c.data, params.n)
     lcube=runLCUBE(c.data, params.n)

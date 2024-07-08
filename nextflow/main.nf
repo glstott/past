@@ -17,8 +17,8 @@ Cmd line: $workflow.commandLine
 params.n = 500
 params.taxa = 5000
 params.sequenced = 2500
-params.prefix = "sim_0613"
-params.p="\"c(0.1,0.8,0.8,0.8,0.8)\""
+params.prefix = "sim_0718"
+params.p="\"c(0.8,0.8,0.4,0.8,0.8)\""
 params.loc="4"
 
 
@@ -26,7 +26,7 @@ process trueTree {
     //conda "-c bioconda -c conda-forge r-base r-ape=5.7 r-diversitree r-phangorn=2.11 bioconductor-treeio=1.26.0"
     //conda "$workflow.projectDir/envs/simulation.yml"
     conda "-c bioconda iqtree"
-    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/raw/", mode: 'copy'
     // Process for generating true trees given a number of taxa.
 
     input:
@@ -47,8 +47,30 @@ process trueTree {
     """
 }
 
+process trueTreeNoSeed {
+    //conda "-c bioconda -c conda-forge r-base r-ape=5.7 r-diversitree r-phangorn=2.11 bioconductor-treeio=1.26.0"
+    //conda "$workflow.projectDir/envs/simulation.yml"
+    conda "-c bioconda iqtree"
+    publishDir "$workflow.projectDir/../${params.prefix}/raw/", mode: 'copy'
+    // Process for generating true trees given a number of taxa.
+    input:
+    val seed
+    val taxa
+    val prefix
+    output:
+    tuple path("${prefix}-${seed}.fa"), path("${prefix}-${seed}.csv"), val(Math.round(Math.random()*10000)), emit: data
+    path "${prefix}-${seed}.nwk", emit: ttree
+    path "${prefix}-${seed}.nex", emit: ttree_nex
+
+    script:
+    """
+    Rscript $workflow.projectDir/scripts/simulate.r --vanilla ${prefix}-${seed} ${prefix}-${seed}.csv ${taxa} ${seed}
+    iqtree2 --alisim ${prefix}-${seed} -m HKY --branch-scale 0.004 --length 1500 -t ${prefix}-${seed}.nwk --out-format fasta  ${seed}
+    """
+}
+
 process convenienceSampling {
-    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/raw/", mode: 'copy'
     input:
     tuple path(seqs), path(metadata), val(seed)
     val n
@@ -63,7 +85,7 @@ process convenienceSampling {
 }
 
 process geoBiasedSampling {
-    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/raw/", mode: 'copy'
     input:
     tuple path(seqs), path(metadata), val(seed)
     val n
@@ -79,7 +101,7 @@ process geoBiasedSampling {
 }
 
 process temporalBiasedSampling {
-    publishDir "$workflow.projectDir/../raw/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/raw/", mode: 'copy'
     input:
     tuple path(seqs), path(metadata), val(seed)
     val n
@@ -95,7 +117,7 @@ process temporalBiasedSampling {
 }
 
 process runSimpleSampling {
-    publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/lphy/sampled/", mode: 'copy'
     input:
     tuple path(seqs), path(metadata), val(seed)
     val n
@@ -110,7 +132,7 @@ process runSimpleSampling {
 }
 
 process runStratifiedSampling {
-    publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/lphy/sampled/", mode: 'copy'
     input:
     tuple path(seqs), path(metadata), val(seed)
     val n
@@ -125,7 +147,7 @@ process runStratifiedSampling {
 }
 
 process runLCUBE {
-    publishDir "$workflow.projectDir/../lphy/sampled/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/lphy/sampled/", mode: 'copy'
     // Note: long-term this needs to be updated to include a docker image for reproducibility purposes
     //        for now, set up your own R environment with the necessary packages.
     
@@ -143,7 +165,7 @@ process runLCUBE {
 }
 
 process generateLphyScripts {
-    publishDir "$workflow.projectDir/../lphy/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/lphy/", mode: 'copy'
     
     input:
     tuple path(seqs), path(metadata), val(seed)
@@ -154,12 +176,12 @@ process generateLphyScripts {
     script:
     """
     sed "s|DATAGOESHERE|${seqs}|g" $workflow.projectDir/scripts/discrete_symmetric.lphy > ${seqs.simpleName}.lphy
-    lphybeast ${seqs.simpleName}.lphy -l 100000000 -o ${seqs.simpleName}-100M.xml
+    lphybeast ${seqs.simpleName}.lphy -l 50000000 -o ${seqs.simpleName}-100M.xml
     """
 }
 
 process executeBeast {
-    publishDir "$workflow.projectDir/../lphy/", mode: 'copy'
+    publishDir "$workflow.projectDir/../${params.prefix}/lphy/", mode: 'copy'
     
     input:
     tuple path(xml), val(seed), path(lphy)
@@ -172,6 +194,22 @@ process executeBeast {
     sed "s|WHICH|${xml.simpleName}.xml|g" $workflow.projectDir/scripts/beast.sh > ${xml.simpleName}.sh
     """
 
+}
+
+workflow  oneTreeManySubsample {
+    c=channel.of(1..10)
+    t=trueTreeNoSeed(seed=12, taxa=params.taxa, prefix=params.prefix + "_" + c)
+    //  set up sampling schemata
+    simpleConvenience=convenienceSampling(t.data, params.sequenced)
+    biasedConvenience=geoBiasedSampling(t.data, params.sequenced, params.p)
+    temporalBiasedConvenience=temporalBiasedSampling(t.data, params.sequenced, params.loc)
+    c=simpleConvenience.mix(geoBiasedSampling,temporalBiasedConvenience)
+    // perform subsampling
+    simple=runSimpleSampling(c.data, params.n)
+    stratified=runStratifiedSampling(c.data, params.n)
+    lcube=runLCUBE(c.data, params.n)
+    // generate BEAST XML files
+    simple.mix(stratified,lcube) | generateLphyScripts | executeBeast
 }
 
 
